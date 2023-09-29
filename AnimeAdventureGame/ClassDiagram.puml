@@ -1,0 +1,62 @@
+@startuml
+
+class Magician{
+- name: string
+- experiencePoints: int
+- lifePoints:int
+- spells: Array
+
++ Magician(String name)
++ getLevel()
+}
+class MagicAdventureApp {
++ main() starts the game
+}
+abstract class Spell {
+- incantation: string
+- level: int
+- damage: int
+- hitProbability: int
+
++ train()
+}
+class SpellClass1
+class SpellClass2
+class MasterWizard{
++ create(Magician)
++ teach(Magician)
+}
+class MagicGame{
+- magician
+
++ MagicGame(Magician)
+}
+class Stopwatch {
+- start
+- end
+
++ start()
++ stop()
++ getDiff()
+}
+class Monster{
+- name: string
+- level: int
+- lifePoints: int
+- attackDamage: int
+}
+
+
+
+MasterWizard ..> Magician :creates & teaches
+MagicGame ..> Monster :creates
+MagicGame "1" *--> "1" Magician
+MagicGame <.. MagicAdventureApp: starts
+MagicGame <.. Stopwatch: uses
+Magician "1" *--> "*" Spell
+SpellClass1 --|> Spell :inherits
+SpellClass2 --|> Spell :inherits
+
+
+
+@enduml
