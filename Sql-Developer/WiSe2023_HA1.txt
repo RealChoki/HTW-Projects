@@ -1,0 +1,108 @@
+ALTER SESSION SET current_schema=ugm;
+
+--Aufgabe 1 (1 Punkt) Preise der Preisliste 1 (PLID), deren Betrag größer als 70 Euro ist. Der Produktidentifikator (PID) und der Betrag des Produkts in dieser Preisliste sollen ausgegeben werden. Sortiert nach Betrag.
+SELECT pid, betrag 
+    FROM preis
+WHERE betrag > 70 
+    AND plid = 1
+ORDER BY betrag;
+
+--Aufgabe 2 (1 Punkt) Alle Verkaufsgebiete, die keine Obergebiete haben.
+SELECT vgid, bez, ebene FROM verkaufsgebiet WHERE obergebiet IS NULL;
+
+-- Aufgabe 3 (2 Punkte) Verkaufsgebiete und Kennzeichnung, ob ein Gebiet Wurzel der Hierarchie ist, innerer Knoten oder Blatt.
+SELECT vgid, bez,
+CASE
+    WHEN obergebiet IS NULL THEN 'Wurzel'
+    WHEN ebene = (SELECT MAX(ebene) FROM verkaufsgebiet) THEN 'Blatt'
+    ELSE 'Innerer Knoten'
+END AS hierarchie
+FROM verkaufsgebiet;
+
+
+-- Aufgabe 4 (3 Punkte) Produktkategoriehierarchie mit Einrückungen entsprechend der Ebene. Sortiert nach KID.
+SELECT LPAD(' ', 2 * (ebene - 1)) || bez AS produkt
+FROM kategorie
+ORDER BY kid;
+
+-- Aufgabe 5 (3 Punkte) Bestellungen, bei denen (fehlerhaft) das Versanddatum vor dem Bestelldatum liegt. Sortiert nach PIB und BID.
+SELECT b.bid, p.bez, b.bestelldatum, v.versanddatum
+FROM bestellung b
+    INNER JOIN bestellposition bp
+        ON b.bid = bp.bid
+    INNER JOIN versand v
+        ON bp.vid = v.vid
+    INNER JOIN produkt p
+        ON bp.pid = p.pid
+WHERE b.bestelldatum > v.versanddatum
+ORDER BY p.pid, b.bid;
+
+--Aufgabe 6 (4 Punkte) Produkte, denen (fehlerhaft) keine Kategorie zugeordnet wurde. Sortiert nach PID.
+SELECT p.pid, p.bez
+FROM produkt p
+    FULL JOIN produktkategorie pk 
+        ON p.pid = pk.pid
+WHERE pk.kid IS NULL
+ORDER BY p.pid;
+
+
+-- Aufgabe 7 (4 Punkte) Kategorien der Ebene 2, für die am 07.05.2018 Produkte an Kunden verkauft wurden, deren Namen mit B beginnt. Verwenden Sie ’select distinct ...’ damit jede Kategorie in der Ausgabe nur einmalig erscheint. Sortiert nach der Bezeichnung der Kategorie.
+SELECT 
+    DISTINCT k.bez, 
+    k.ebene
+FROM (
+    SELECT bid, kid, bestelldatum 
+    FROM bestellung 
+    WHERE bestelldatum = TO_DATE('07.05.2018', 'DD.MM.YYYY')) b
+    INNER JOIN bestellposition bp
+        ON bp.bid = b.bid 
+    INNER JOIN produkt p
+        ON bp.pid = p.pid
+    INNER JOIN produktkategorie pk 
+        ON p.pid = pk.pid
+    INNER JOIN (
+    SELECT k1.ebene, k1.bez, k2.kid AS kkid
+    FROM kategorie k1
+        INNER JOIN kategorie k2
+            ON k1.kid = k2.oberkategorie) k
+        ON pk.kid = k.kkid
+WHERE b.kid IN (SELECT kid FROM kunde WHERE name LIKE 'B%')
+ORDER BY k.bez;
+
+-- Aufgabe 8 (4 Punkte) Bestellpositionen mit fehlerhaftem Einzelpreis. D.h., der Einzelpreis stimmt nicht mit dem Betrag aus der zum Zeitpunkt gültigen Preisliste überein. Sortiert nach BID und PID.
+SELECT b.bestelldatum, pl.datum_von, pl.datum_bis, produkt.bez, bp.einzelpreis, preis.betrag
+    FROM preisliste pl
+INNER JOIN preis ON preis.plid = pl.plid
+INNER JOIN produkt ON produkt.pid = preis.pid
+INNER JOIN bestellposition bp ON bp.pid = produkt.pid
+INNER JOIN bestellung b ON b.bid = bp.bid
+WHERE
+    bp.einzelpreis <> preis.betrag
+    AND b.bestelldatum BETWEEN pl.datum_von AND pl.datum_bis
+ORDER BY bp.bid, bp.pid;
+
+-- Aufgabe 9 (4 Punkte) Verkaufsgebietshierarchie mit allen Ebenen. Sortiert nach VGID von Ebene 1 bis 4.
+SELECT 
+    vg1.bez, 
+    vg2.bez,
+    vg3.bez,
+    vg4.bez
+FROM verkaufsgebiet vg1
+    INNER JOIN verkaufsgebiet vg2 
+        ON vg1.vgid = vg2.obergebiet
+    INNER JOIN verkaufsgebiet vg3
+        ON vg2.vgid = vg3.obergebiet
+    INNER JOIN verkaufsgebiet vg4 
+        ON vg3.vgid = vg4.obergebiet
+ORDER BY vg3.vgid;
+
+
+-- Aufgabe 10 (4 Punkte) Produkte ohne Bestellungen. Sortiert nach PID.
+SELECT p.pid, p.bez 
+FROM produkt p
+    LEFT JOIN bestellposition bp 
+        ON bp.pid = p.pid
+    LEFT JOIN bestellung b 
+        ON b.bid = bp.bid
+WHERE b.bid IS NULL;
+
